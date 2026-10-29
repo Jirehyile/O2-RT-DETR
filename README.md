@@ -1,10 +1,46 @@
-# O²-RTDETR 在 L315_vehicle 上的基线训练流程
+<h1 align="center">O²-RTDETR × L315_vehicle</h1>
+<p align="center"><strong>单卡 Windows 环境下的旋转目标检测基线训练流程</strong></p>
 
-本文档记录从拿到 `D:\Object_Detection` 工程后，到建立 Python 环境、适配源码、配置 `L315_vehicle` 数据集，再到启动正式基线训练的必要步骤。
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.9-3776AB?logo=python&logoColor=white" alt="Python 3.9">
+  <img src="https://img.shields.io/badge/PyTorch-2.0.1%2Bcu118-EE4C2C?logo=pytorch&logoColor=white" alt="PyTorch 2.0.1">
+  <img src="https://img.shields.io/badge/CUDA-11.8-76B900?logo=nvidia&logoColor=white" alt="CUDA 11.8">
+  <img src="https://img.shields.io/badge/MMDetection-3.0.0-5C6BC0" alt="MMDetection 3.0.0">
+  <img src="https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white" alt="Windows">
+</p>
 
-原项目的论文、模型介绍与官方说明见 [README_OFFICIAL.md](README_OFFICIAL.md)。
+本文档记录从拉取仓库、创建 Python 环境、准备 `L315_vehicle` 数据集、完成硬件适配，到启动正式基线训练的必要步骤。
 
-## 1. 最终基线设置
+> [!NOTE]
+> 原项目的论文、模型介绍与官方说明保存在 [README_OFFICIAL.md](README_OFFICIAL.md)。本仓库已经集成运行所需的源码兼容修复。
+
+## 🧭 快速导航
+
+- [🎯 最终基线设置](#1-最终基线设置)
+- [📁 目录结构](#2-目录结构)
+- [🐍 创建 Conda 环境](#3-创建-conda-环境)
+- [📦 安装依赖](#4-安装依赖)
+- [🧩 已集成的兼容修复](#5-仓库已集成的兼容修复)
+- [⚙️ L315 配置](#6-使用仓库内置的-l315_vehicle-配置)
+- [✅ 检查最终配置](#7-检查最终配置)
+- [🧪 预训练权重与硬件适配](#8-首次启动预训练权重与硬件适配)
+- [🔥 完整数据集压力测试](#9-完整数据集-1-轮压力测试)
+- [🚀 正式 72 轮训练](#10-继续正式-72-轮基线训练)
+- [⏯️ 中断与恢复](#11-中断与恢复)
+- [📊 训练产物与结果记录](#12-训练产物和基线记录)
+
+```mermaid
+flowchart LR
+    A[拉取仓库] --> B[创建环境]
+    B --> C[准备数据集]
+    C --> D[下载预训练权重]
+    D --> E[测试 Batch 与 Workers]
+    E --> F[完整数据跑 1 轮]
+    F --> G[正式训练 72 轮]
+    G --> H[分析收敛与创新空间]
+```
+
+## 1. 🎯 最终基线设置
 
 | 项目 | 设置 |
 |---|---|
@@ -25,7 +61,7 @@
 | 验证间隔 | 6 epochs |
 | 权重保存 | 每轮保存 |
 
-## 2. 目录结构
+## 2. 📁 目录结构
 
 确保主要目录如下：
 
@@ -56,7 +92,7 @@ test:   3,350 张
 
 实际标注中只有四类：`Bus`、`Car`、`Truck`、`Van`。
 
-## 3. 创建 Conda 环境
+## 3. 🐍 创建 Conda 环境
 
 在 PowerShell 中执行：
 
@@ -68,7 +104,7 @@ cd D:\Object_Detection\O2-RT-DETR-main
 
 后续所有命令都在 `pytorch201` 环境和项目根目录下执行。
 
-## 4. 安装依赖
+## 4. 📦 安装依赖
 
 ### 4.1 安装 PyTorch 2.0.1 + CUDA 11.8
 
@@ -128,196 +164,59 @@ CUDA:        True
 
 `pip check` 应输出 `No broken requirements found.`
 
-## 5. 必要的源码兼容修复
+## 5. 🧩 仓库已集成的兼容修复
 
-下列修复用于使项目适配 Python 3.9 + MMDetection 3.0.0，不改变 O²-RTDETR 的网络结构。
+> [!IMPORTANT]
+> 本仓库已经包含运行 O²-RTDETR 所需的兼容性修复。同伴拉取代码后**不需要再次修改这些源码**。
 
-### 5.1 Python 3.9 类型注解兼容
+已集成内容包括：
 
-文件：
+- Python 3.9 类型注解兼容；
+- `ConcatDataset` 的 MMEngine 导入适配；
+- 可选 SARDet 指标的隔离；
+- L315 标注头 `imagesource`、`gsd` 的过滤；
+- O²-RTDETR Decoder 与 MMDetection 3.0.0 的接口适配；
+- Windows 使用 `spawn` 启动数据加载进程；
+- L315 四分类数据加载和训练配置。
 
-```text
-projects\rotated_rtdetr\rotated_rtdetr\prob_iou.py
-```
+这些修改属于运行兼容性适配，不改变 O²-RTDETR 的网络结构和损失定义。
 
-在第一行加入：
+## 6. ⚙️ 使用仓库内置的 L315_vehicle 配置
 
-```python
-from __future__ import annotations
-```
-
-### 5.2 ConcatDataset 导入路径
-
-文件：
-
-```text
-ai4rs\datasets\dataset_wrappers.py
-```
-
-使用：
-
-```python
-from mmengine.dataset import ConcatDataset as MMDET_ConcatDataset
-```
-
-### 5.3 避免可选 SARDet 评价器阻断 DOTA 评价
-
-文件：
-
-```text
-ai4rs\evaluation\metrics\__init__.py
-```
-
-内容保持为：
-
-```python
-from .dota_metric import DOTAMetric
-from .rotated_coco_metric import RotatedCocoMetric
-from .icdar2015_metric import ICDAR2015Metric
-from .fair_metric import FAIRMetric
-
-try:
-    from .coco_metric_sardet_100k import CocoMetricSARDet100k
-except ImportError:
-    CocoMetricSARDet100k = None
-
-__all__ = ['DOTAMetric', 'RotatedCocoMetric', 'ICDAR2015Metric', 'FAIRMetric']
-if CocoMetricSARDet100k is not None:
-    __all__.append('CocoMetricSARDet100k')
-```
-
-### 5.4 忽略 L315 DOTA 格式中的元数据行
-
-文件：
-
-```text
-ai4rs\datasets\dota.py
-```
-
-在 `bbox_info = si.split()` 后增加：
-
-```python
-if len(bbox_info) < 10:
-    continue
-```
-
-用于忽略：
-
-```text
-imagesource:lab315
-gsd:NULL
-```
-
-### 5.5 补齐项目 Decoder 与 MMDetection 3.0.0 的接口
-
-文件：
-
-```text
-projects\rotated_rtdetr\rotated_rtdetr\rotated_rtdetr.py
-```
-
-在 `pre_decoder()` 之后、`gen_encoder_output_proposals()` 之前加入：
-
-```python
-    def forward_decoder(
-            self,
-            query: Tensor,
-            memory: Tensor,
-            memory_mask: Tensor,
-            reference_points: Tensor,
-            spatial_shapes: Tensor,
-            level_start_index: Tensor,
-            valid_ratios: Tensor,
-            dn_mask: Optional[Tensor] = None,
-            cls_branches: nn.ModuleList = None,
-            eval_idx: int = -1) -> Dict:
-
-        outputs_classes, outputs_coords = self.decoder(
-            query=query,
-            value=memory,
-            key_padding_mask=memory_mask,
-            self_attn_mask=dn_mask,
-            reference_points=reference_points,
-            spatial_shapes=spatial_shapes,
-            level_start_index=level_start_index,
-            valid_ratios=valid_ratios,
-            reg_branches=self.bbox_head.reg_branches,
-            cls_branches=cls_branches,
-            eval_idx=eval_idx)
-
-        return dict(
-            hidden_states=outputs_classes,
-            references=outputs_coords)
-```
-
-## 6. L315_vehicle 基线配置
-
-配置文件：
+训练配置已经包含在仓库中：
 
 ```text
 projects\rotated_rtdetr\configs\o2_rtdetr_r18vd_1xb1_72e_l315.py
 ```
 
-关键配置必须保持为：
+默认数据路径为：
 
-```python
-from copy import deepcopy
-from mmengine.config import read_base
-
-with read_base():
-    from .o2_rtdetr_r18vd_2xb4_72e_dota import *
-
-dataset_root = 'D:/Object_Detection/data/L315_vehicle/'
-metainfo = dict(
-    classes=('Bus', 'Car', 'Truck', 'Van'),
-    palette=[(220, 20, 60), (0, 128, 255),
-             (255, 165, 0), (0, 180, 90)])
-
-model['bbox_head']['num_classes'] = 4
-train_pipeline[5]['rect_obj_labels'] = None
-
-train_dataloader.update(
-    batch_size=4,
-    num_workers=2,
-    persistent_workers=True,
-    dataset=dict(
-        type=dataset_type,
-        data_root=dataset_root,
-        ann_file='train/labelTxt/',
-        data_prefix=dict(img_path='train/images/'),
-        metainfo=metainfo,
-        filter_cfg=dict(filter_empty_gt=True),
-        pipeline=train_pipeline))
-
-val_dataloader.update(
-    batch_size=4,
-    num_workers=2,
-    persistent_workers=True,
-    dataset=dict(
-        type=dataset_type,
-        data_root=dataset_root,
-        ann_file='val/labelTxt/',
-        data_prefix=dict(img_path='val/images/'),
-        metainfo=metainfo,
-        test_mode=True,
-        pipeline=val_pipeline))
-
-test_dataloader = deepcopy(val_dataloader)
-test_evaluator = deepcopy(val_evaluator)
-
-optim_wrapper.update(
-    type='OptimWrapper',
-    accumulative_counts=2)
-auto_scale_lr.update(enable=False, base_batch_size=8)
-
-env_cfg['mp_cfg']['mp_start_method'] = 'spawn'
-
-work_dir = './work_dirs/o2_rtdetr_r18vd_1xb1_72e_l315'
+```text
+D:/Object_Detection/data/L315_vehicle/
 ```
 
-不要使用 `--amp`。该项目的 KLD 匹配代价在当前 PyTorch 版本下不支持 FP16 矩阵行列式运算。
+如果同伴的数据集放在其他位置，只需要修改配置中的这一行：
 
-## 7. 检查最终配置
+```python
+dataset_root = '实际的/L315_vehicle/路径/'
+```
+
+仓库中的默认值是 RTX 4070 Laptop 8 GB 上已经验证通过的参考配置。模型、数据划分、输入尺寸和优化器应保持不变；batch size、梯度累积和 workers 必须先按同伴自己的硬件完成第 8 节测试后再确定：
+
+```text
+类别：Bus、Car、Truck、Van
+输入：1024 × 1024
+训练 batch：4
+验证/test batch：4
+num_workers：2
+梯度累积：2
+有效 batch：8
+精度：FP32
+总训练上限：72 epochs
+```
+
+不要使用 `--amp`。当前 PyTorch 版本下，项目的 KLD 匹配代价不支持 FP16 矩阵行列式运算。
+## 7. ✅ 检查最终配置
 
 ```powershell
 python -c "from mmengine.config import Config; c=Config.fromfile(r'projects/rotated_rtdetr/configs/o2_rtdetr_r18vd_1xb1_72e_l315.py'); print('train batch:',c.train_dataloader.batch_size); print('val batch:',c.val_dataloader.batch_size); print('workers:',c.train_dataloader.num_workers); print('accumulation:',c.optim_wrapper.accumulative_counts); print('effective batch:',c.train_dataloader.batch_size*c.optim_wrapper.accumulative_counts); print('epochs:',c.train_cfg.max_epochs)"
@@ -334,7 +233,124 @@ effective batch: 8
 epochs: 72
 ```
 
-## 8. 完整数据集 1 轮压力测试
+## 8. 🧪 首次启动、预训练权重与硬件适配
+
+> [!WARNING]
+> 不同电脑不能直接假定 `batch=4、workers=2` 一定可用。必须先完成小规模测试，再固定该电脑的正式配置。以下测试只覆盖运行参数，不改变模型、输入尺寸、数据集和优化器。
+
+### 8.1 首次启动与预训练权重
+
+R18 配置已经指定官方预训练权重。第一次执行训练命令时会自动下载：
+
+```text
+https://www.modelscope.cn/models/wokaikaixinxin/ai4rs/resolve/master/rtdetr/resnet18vd_pretrained_55f5a0d6.pth
+```
+
+正常日志包含：
+
+```text
+load model from: ...resnet18vd_pretrained_55f5a0d6.pth
+```
+
+下载后通常缓存到：
+
+```text
+C:\Users\<用户名>\.cache\torch\hub\checkpoints\
+```
+
+### 8.2 从保守配置开始测试训练
+
+先测试物理 batch 1，并保持有效 batch 为 8：
+
+```powershell
+python tools\train.py `
+  projects\rotated_rtdetr\configs\o2_rtdetr_r18vd_1xb1_72e_l315.py `
+  --cfg-options `
+  train_dataloader.batch_size=1 `
+  train_dataloader.num_workers=0 `
+  train_dataloader.persistent_workers=False `
+  train_dataloader.dataset.indices=32 `
+  val_dataloader.batch_size=1 `
+  val_dataloader.num_workers=0 `
+  val_dataloader.persistent_workers=False `
+  optim_wrapper.accumulative_counts=8 `
+  train_cfg.max_epochs=1 `
+  work_dir=./work_dirs/hardware_test_b1
+```
+
+成功后逐级测试，而不是直接使用最大值：
+
+| 物理 batch | 梯度累积 | 有效 batch |
+|---:|---:|---:|
+| 1 | 8 | 8 |
+| 2 | 4 | 8 |
+| 4 | 2 | 8 |
+
+测试 batch 2 时，把命令中的对应值改为：
+
+```text
+train_dataloader.batch_size=2
+optim_wrapper.accumulative_counts=4
+work_dir=./work_dirs/hardware_test_b2
+```
+
+测试 batch 4 时改为：
+
+```text
+train_dataloader.batch_size=4
+optim_wrapper.accumulative_counts=2
+work_dir=./work_dirs/hardware_test_b4
+```
+
+出现 `CUDA out of memory` 时停止提高 batch，使用上一个稳定值。不要通过降低 1024×1024 输入尺寸或开启 AMP 来绕过显存测试；这会改变基线条件，且当前 KLD 匹配计算不支持完整 FP16 训练。
+
+### 8.3 测试验证/test batch
+
+验证不保存梯度，通常能使用与训练相同或更大的 batch。使用已经生成的测试权重运行：
+
+```powershell
+python tools\test.py `
+  projects\rotated_rtdetr\configs\o2_rtdetr_r18vd_1xb1_72e_l315.py `
+  work_dirs\hardware_test_b1\epoch_1.pth `
+  --cfg-options `
+  test_dataloader.batch_size=4 `
+  test_dataloader.num_workers=0 `
+  test_dataloader.persistent_workers=False `
+  --work-dir work_dirs/val_batch_test
+```
+
+如果验证 batch 4 OOM，则依次退回 2、1。验证 batch 只影响吞吐量和显存，不更新模型权重。
+
+### 8.4 测试 num_workers
+
+`num_workers` 取决于 CPU、系统内存、硬盘和操作系统。Windows 建议从 0 开始，再测试 2；只有 2 明显更快且稳定时才保留。
+
+```text
+num_workers=0  -> persistent_workers=False
+num_workers>0  -> persistent_workers=True
+```
+
+比较日志中的 `data_time` 和 `time`，选择稳定且总 `time` 最小的值。workers 过多可能因进程调度和磁盘竞争而变慢。
+
+### 8.5 固定该电脑的运行配置
+
+完成测试后，把选定值写回 L315 配置文件，并再次执行第 7 节检查。此后正式基线训练期间不再更改：
+
+```text
+训练 batch size
+梯度累积次数
+验证/test batch size
+num_workers
+persistent_workers
+```
+
+必须始终保证：
+
+```text
+训练物理 batch × 梯度累积 = 有效 batch 8
+```
+
+## 9. 🔥 完整数据集 1 轮压力测试
 
 在正式长时间训练前，先用全部训练集跑 1 轮，确认密集目标图片不会导致显存溢出：
 
@@ -346,11 +362,16 @@ python tools\train.py `
   work_dir=./work_dirs/l315_full_1epoch_test
 ```
 
-成功标志：
+成功标志是完成整轮训练、保存 `epoch_1.pth` 并完成验证。迭代次数由最终 batch 决定：
 
 ```text
-Saving checkpoint at 1 epochs
-Epoch(val) [1][767/767]
+训练 batch 1：12248 次/epoch
+训练 batch 2： 6124 次/epoch
+训练 batch 4： 3062 次/epoch
+
+验证 batch 1：3065 次
+验证 batch 2：1533 次
+验证 batch 4： 767 次
 ```
 
 当前已验证的第 1 轮结果：
@@ -361,7 +382,7 @@ Epoch(val) [1][767/767]
 mAP: 0.3963
 ```
 
-## 9. 继续正式 72 轮基线训练
+## 10. 🚀 继续正式 72 轮基线训练
 
 第 1 轮已经是正式基线的一部分。使用同一工作目录从 `epoch_1.pth` 继续：
 
@@ -381,7 +402,7 @@ Epoch(train) [2][.../3062]
 
 正式训练开始后，不再修改模型、数据、batch size、梯度累积、优化器、学习率、数据增强和输入尺寸。
 
-## 10. 中断与恢复
+## 11. ⏯️ 中断与恢复
 
 配置每轮都保存 checkpoint。需要暂停时，尽量等待：
 
@@ -389,11 +410,11 @@ Epoch(train) [2][.../3062]
 Saving checkpoint at N epochs
 ```
 
-然后按一次 `Ctrl+C`。恢复时重新执行第 9 节的 `--resume` 命令。
+然后按一次 `Ctrl+C`。恢复时重新执行第 10 节的 `--resume` 命令。
 
 如果在某轮中间停止，当前未完成轮次会丢失，但可从上一个完整 checkpoint 继续。
 
-## 11. 训练产物和基线记录
+## 12. 📊 训练产物和基线记录
 
 权重、日志和配置快照保存在：
 
