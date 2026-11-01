@@ -1,100 +1,129 @@
 <h1 align="center">O²-RTDETR × L315_vehicle</h1>
-<p align="center"><strong>单卡 Windows 环境下的旋转目标检测基线训练流程</strong></p>
+
+<p align="center"><strong>Windows 单卡环境下的遥感旋转车辆检测基线复现与创新实验工程</strong></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9-3776AB?logo=python&logoColor=white" alt="Python 3.9">
   <img src="https://img.shields.io/badge/PyTorch-2.0.1%2Bcu118-EE4C2C?logo=pytorch&logoColor=white" alt="PyTorch 2.0.1">
   <img src="https://img.shields.io/badge/CUDA-11.8-76B900?logo=nvidia&logoColor=white" alt="CUDA 11.8">
   <img src="https://img.shields.io/badge/MMDetection-3.0.0-5C6BC0" alt="MMDetection 3.0.0">
-  <img src="https://img.shields.io/badge/Platform-Windows-0078D4?logo=windows&logoColor=white" alt="Windows">
+  <img src="https://img.shields.io/badge/Test_mAP-83.07%25-success" alt="Test mAP 83.07%">
 </p>
 
-本文档记录从拉取仓库、创建 Python 环境、准备 `L315_vehicle` 数据集、完成硬件适配，到启动正式基线训练的必要步骤。
+本仓库记录 O²-RTDETR-R18 在四类 L315_vehicle 数据集上的完整基线流程，包括环境搭建、硬件适配、正式训练、断点恢复、验证集选权重、测试集评估、可视化、预测结果导出、混淆矩阵和后续创新方向。
 
 > [!NOTE]
-> 原项目的论文、模型介绍与官方说明保存在 [README_OFFICIAL.md](README_OFFICIAL.md)。本仓库已经集成运行所需的源码兼容修复。
+> 原论文与官方项目介绍保存在 [README_OFFICIAL.md](README_OFFICIAL.md)。本 README 只描述当前仓库的 L315 基线复现和实验流程。
 
-## 🧭 快速导航
+## 🧭 当前进度
 
-- [🎯 最终基线设置](#1-最终基线设置)
-- [📁 目录结构](#2-目录结构)
-- [🐍 创建 Conda 环境](#3-创建-conda-环境)
-- [📦 安装依赖](#4-安装依赖)
-- [🧩 已集成的兼容修复](#5-仓库已集成的兼容修复)
-- [⚙️ L315 配置](#6-使用仓库内置的-l315_vehicle-配置)
-- [✅ 检查最终配置](#7-检查最终配置)
-- [🧪 预训练权重与硬件适配](#8-首次启动预训练权重与硬件适配)
-- [🔥 完整数据集压力测试](#9-完整数据集-1-轮压力测试)
-- [🚀 正式 72 轮训练](#10-继续正式-72-轮基线训练)
-- [⏯️ 中断与恢复](#11-中断与恢复)
-- [📊 训练产物与结果记录](#12-训练产物和基线记录)
+- [x] 环境与依赖配置
+- [x] L315 四分类数据加载
+- [x] 单卡 8 GB 硬件适配
+- [x] 114 轮收敛探索
+- [x] 验证集选择最佳权重
+- [x] 测试集正式评估
+- [x] 测试集可视化
+- [x] 预测结果导出
+- [x] 混淆矩阵与误差分析
+- [ ] 主创新实现与消融实验
 
 ```mermaid
 flowchart LR
-    A[拉取仓库] --> B[创建环境]
-    B --> C[准备数据集]
-    C --> D[下载预训练权重]
-    D --> E[测试 Batch 与 Workers]
-    E --> F[完整数据跑 1 轮]
-    F --> G[正式训练 72 轮]
-    G --> H[分析收敛与创新空间]
+    A[环境与数据] --> B[硬件适配]
+    B --> C[完整1轮压力测试]
+    C --> D[正式训练]
+    D --> E[验证集选择权重]
+    E --> F[测试集最终评估]
+    F --> G[可视化与混淆分析]
+    G --> H[创新与消融实验]
 ```
 
-## 1. 🎯 最终基线设置
+## 📊 基线结论
+
+### 最终配置
 
 | 项目 | 设置 |
 |---|---|
-| 模型 | O²-RTDETR-R18 |
+| 模型 | O²-RTDETR-R18-vd |
 | 数据集 | L315_vehicle |
 | 类别 | Bus、Car、Truck、Van |
-| 输入画布 | 1024 × 1024 |
-| GPU | NVIDIA GeForce RTX 4070 Laptop 8 GB |
+| 输入尺寸 | 1024 × 1024 |
+| 训练精度 | FP32，不启用 AMP |
+| GPU | NVIDIA GeForce RTX 4070 Laptop GPU 8 GB |
 | 训练 batch size | 4 |
-| 验证/test batch size | 4 |
+| 验证/测试 batch size | 4 |
 | 梯度累积 | 2 |
-| 有效 batch size | 4 × 2 = 8 |
+| 有效 batch size | 8 |
 | num_workers | 2 |
-| 数值精度 | FP32，不使用 AMP |
 | 优化器 | AdamW |
 | 基础学习率 | 1e-4 |
-| 训练上限 | 72 epochs |
-| 验证间隔 | 6 epochs |
-| 权重保存 | 每轮保存 |
+| 验证间隔 | 每 6 轮 |
+| 收敛探索 | 114 轮 |
+| 推荐正式训练上限 | 90 轮，验证集选择最佳权重 |
+| 最佳检查点 | epoch_78.pth |
 
-## 2. 📁 目录结构
+### 正式结果
 
-确保主要目录如下：
+| 数据划分 | 权重 | mAP | AP50 |
+|---|---|---:|---:|
+| 验证集 | epoch_78.pth | 85.09% | 85.10% |
+| 测试集 | epoch_78.pth | 83.07% | 83.10% |
+
+测试集分类结果：
+
+| 类别 | GT | Recall | AP |
+|---|---:|---:|---:|
+| Bus | 287 | 99.30% | 86.43% |
+| Car | 23,059 | 99.67% | 90.19% |
+| Truck | 3,654 | 99.37% | 85.65% |
+| Van | 1,078 | 99.81% | 70.03% |
+
+### 时间统计
+
+| 项目 | 时间 |
+|---|---:|
+| 114 轮总运行时间 | 70 小时 25 分 24 秒 |
+| 平均每轮（包含验证） | 约 37 分 04 秒 |
+| 平均每轮（不包含验证） | 约 36 分 26 秒 |
+
+## 📁 目录结构
 
 ```text
-D:\Object_Detection\
-├── O2-RT-DETR-main\
-│   ├── tools\
-│   ├── ai4rs\
-│   └── projects\rotated_rtdetr\
-└── data\L315_vehicle\
-    ├── train\
-    │   ├── images\
-    │   └── labelTxt\
-    ├── val\
-    │   ├── images\
-    │   └── labelTxt\
-    └── test\
-        └── images\
+Object_Detection/
+├── O2-RT-DETR-main/
+│   ├── ai4rs/
+│   ├── tools/
+│   ├── projects/rotated_rtdetr/
+│   │   └── configs/o2_rtdetr_r18vd_1xb1_72e_l315.py
+│   ├── work_dirs/                         # 本地生成，不进入 Git
+│   │   └── l315_o2_rtdetr_r18_baseline/
+│   │       ├── epoch_78.pth
+│   │       ├── test_predictions.pkl
+│   │       ├── test_visualizations/
+│   │       └── confusion_matrix/
+│   └── README_OFFICIAL.md
+└── data/L315_vehicle/
+    ├── train/
+    │   ├── images/
+    │   └── labelTxt/
+    ├── val/
+    │   ├── images/
+    │   └── labelTxt/
+    └── test/
+        ├── images/
+        └── labelTxt/
 ```
 
-当前划分：
+| 划分 | 图片数 | 用途 |
+|---|---:|---|
+| train | 12,248 | 模型训练 |
+| val | 3,065 | 训练期间验证和选择权重 |
+| test | 3,350 | 最终评估，不参与调参 |
 
-```text
-train: 12,248 张
-val:    3,065 张
-test:   3,350 张
-```
+## 🐍 环境搭建
 
-实际标注中只有四类：`Bus`、`Car`、`Truck`、`Van`。
-
-## 3. 🐍 创建 Conda 环境
-
-在 PowerShell 中执行：
+### 1. 创建环境
 
 ```powershell
 conda create -n pytorch201 python=3.9 -y
@@ -102,18 +131,14 @@ conda activate pytorch201
 cd D:\Object_Detection\O2-RT-DETR-main
 ```
 
-后续所有命令都在 `pytorch201` 环境和项目根目录下执行。
-
-## 4. 📦 安装依赖
-
-### 4.1 安装 PyTorch 2.0.1 + CUDA 11.8
+### 2. 安装 PyTorch 2.0.1 + CUDA 11.8
 
 ```powershell
 python -m pip install torch==2.0.1 torchvision==0.15.2 `
   --index-url https://download.pytorch.org/whl/cu118
 ```
 
-### 4.2 安装固定版本的基础依赖
+### 3. 安装基础依赖
 
 ```powershell
 python -m pip install `
@@ -128,20 +153,16 @@ python -m pip install `
   -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-### 4.3 安装 MMCV 2.0.1
+### 4. 安装 MMCV 和项目
 
 ```powershell
 python -m pip install mmcv==2.0.1 `
   -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
-```
 
-### 4.4 以可编辑方式安装当前项目
-
-```powershell
 python -m pip install -e . --no-deps
 ```
 
-### 4.5 验证环境
+### 5. 验证环境
 
 ```powershell
 python -c "import torch,torchvision,numpy,cv2,mmcv,mmengine,mmdet,ai4rs; print('torch:',torch.__version__); print('torchvision:',torchvision.__version__); print('numpy:',numpy.__version__); print('opencv:',cv2.__version__); print('mmcv:',mmcv.__version__); print('mmengine:',mmengine.__version__); print('mmdet:',mmdet.__version__); print('CUDA:',torch.cuda.is_available()); print('GPU:',torch.cuda.get_device_name(0))"
@@ -149,135 +170,60 @@ python -c "import torch,torchvision,numpy,cv2,mmcv,mmengine,mmdet,ai4rs; print('
 python -m pip check
 ```
 
-应对应：
+参考环境：
 
 ```text
-torch:       2.0.1+cu118
-torchvision: 0.15.2+cu118
-numpy:       1.26.4
-opencv:      4.10.0
-mmcv:        2.0.1
-mmengine:    0.10.7
-mmdet:       3.0.0
-CUDA:        True
+Python       3.9.25
+PyTorch      2.0.1+cu118
+Torchvision  0.15.2+cu118
+NumPy        1.26.4
+OpenCV       4.10.0
+MMCV         2.0.1
+MMEngine     0.10.7
+MMDetection  3.0.0
 ```
 
-`pip check` 应输出 `No broken requirements found.`
+## 🧩 仓库已集成的兼容修复
 
-## 5. 🧩 仓库已集成的兼容修复
-
-> [!IMPORTANT]
-> 本仓库已经包含运行 O²-RTDETR 所需的兼容性修复。拉取代码后**不需要再次修改这些源码**。
-
-已集成内容包括：
+拉取本仓库后不需要重复修改以下内容：
 
 - Python 3.9 类型注解兼容；
-- `ConcatDataset` 的 MMEngine 导入适配；
-- 可选 SARDet 指标的隔离；
-- L315 标注头 `imagesource`、`gsd` 的过滤；
-- O²-RTDETR Decoder 与 MMDetection 3.0.0 的接口适配；
-- Windows 使用 `spawn` 启动数据加载进程；
-- L315 四分类数据加载和训练配置。
+- `ConcatDataset` 导入路径适配；
+- 可选 SARDet 指标隔离；
+- L315 标注头 `imagesource`、`gsd` 过滤；
+- O²-RTDETR Decoder 与 MMDetection 3.0.0 接口适配；
+- Windows `spawn` 多进程配置；
+- L315 四分类配置及旋转框数据加载。
 
-这些修改属于运行兼容性适配，不改变 O²-RTDETR 的网络结构和损失定义。
+这些调整用于运行兼容，不改变 O²-RTDETR 的核心网络结构和原始损失定义。
 
-## 6. ⚙️ 使用仓库内置的 L315_vehicle 配置
+## ⚙️ 数据与配置
 
-训练配置已经包含在仓库中：
-
-```text
-projects\rotated_rtdetr\configs\o2_rtdetr_r18vd_1xb1_72e_l315.py
-```
-
-默认数据路径为：
+配置文件：
 
 ```text
-D:/Object_Detection/data/L315_vehicle/
+projects/rotated_rtdetr/configs/o2_rtdetr_r18vd_1xb1_72e_l315.py
 ```
 
-如果的数据集放在其他位置，只需要修改配置中的这一行：
+默认数据路径：
 
 ```python
-dataset_root = '实际的/L315_vehicle/路径/'
+dataset_root = 'D:/Object_Detection/data/L315_vehicle/'
 ```
 
-仓库中的默认值是 RTX 4070 Laptop 8 GB 上已经验证通过的参考配置。模型、数据划分、输入尺寸和优化器应保持不变；batch size、梯度累积和 workers 必须先按自己的硬件完成第 8 节测试后再确定：
+如果队友的数据集位置不同，只修改 `dataset_root`，不要改变类别顺序和 train/val/test 划分。
 
-```text
-类别：Bus、Car、Truck、Van
-输入：1024 × 1024
-训练 batch：4
-验证/test batch：4
-num_workers：2
-梯度累积：2
-有效 batch：8
-精度：FP32
-总训练上限：72 epochs
-```
-
-不要使用 `--amp`。当前 PyTorch 版本下，项目的 KLD 匹配代价不支持 FP16 矩阵行列式运算。
-## 7. ✅ 检查最终配置
+确认配置：
 
 ```powershell
-python -c "from mmengine.config import Config; c=Config.fromfile(r'projects/rotated_rtdetr/configs/o2_rtdetr_r18vd_1xb1_72e_l315.py'); print('train batch:',c.train_dataloader.batch_size); print('val batch:',c.val_dataloader.batch_size); print('workers:',c.train_dataloader.num_workers); print('accumulation:',c.optim_wrapper.accumulative_counts); print('effective batch:',c.train_dataloader.batch_size*c.optim_wrapper.accumulative_counts); print('epochs:',c.train_cfg.max_epochs)"
+python -c "from mmengine.config import Config; c=Config.fromfile(r'projects/rotated_rtdetr/configs/o2_rtdetr_r18vd_1xb1_72e_l315.py'); print('train batch:',c.train_dataloader.batch_size); print('val batch:',c.val_dataloader.batch_size); print('test batch:',c.test_dataloader.batch_size); print('workers:',c.train_dataloader.num_workers); print('accumulation:',c.optim_wrapper.accumulative_counts); print('effective batch:',c.train_dataloader.batch_size*c.optim_wrapper.accumulative_counts); print('test ann:',c.test_dataloader.dataset.ann_file)"
 ```
 
-正确输出：
+## 🧪 新电脑硬件适配
 
-```text
-train batch: 4
-val batch: 4
-workers: 2
-accumulation: 2
-effective batch: 8
-epochs: 72
-```
+不同电脑不能直接假设 `batch=4、workers=2` 一定可用。先做小规模冒烟测试，再进行完整一轮压力测试。
 
-## 8. 🧪 首次启动、预训练权重与硬件适配
-
-> [!WARNING]
-> 不同电脑不能直接假定 `batch=4、workers=2` 一定可用。必须先完成小规模测试，再固定该电脑的正式配置。以下测试只覆盖运行参数，不改变模型、输入尺寸、数据集和优化器。
-
-可以把整个过程理解为：
-
-| 阶段 | 类比 | 目的 | 是否评价最终精度 |
-|---|---|---|---|
-| 32/128 张小规模测试 | 设备检查 | 确认环境、显存、batch 和 workers 可用 | 否 |
-| 完整数据 1 轮 | 模考 | 检查全数据、密集目标、长时稳定性和验证流程 | 只看趋势 |
-| 固定配置训练 72 轮 | 正式考试 | 建立可用于论文对比的基线 | 是 |
-
-### 8.1 首次启动与预训练权重
-
-R18 配置已经指定官方预训练权重。第一次执行训练命令时会自动下载：
-
-```text
-https://www.modelscope.cn/models/wokaikaixinxin/ai4rs/resolve/master/rtdetr/resnet18vd_pretrained_55f5a0d6.pth
-```
-
-正常日志包含：
-
-```text
-load model from: ...resnet18vd_pretrained_55f5a0d6.pth
-```
-
-下载后通常缓存到：
-
-```text
-C:\Users\<用户名>\.cache\torch\hub\checkpoints\
-```
-
-### 8.2 从保守配置开始测试训练
-
-这一步是“设备检查”，不是精度实验。它需要同时验证：
-
-- 数据能否正常读取；
-- 模型能否完成前向传播；
-- loss 能否正常计算；
-- 反向传播和梯度累积是否正常；
-- checkpoint 能否保存；
-- 验证流程能否完整结束。
-
-先测试物理 batch 1，并保持有效 batch 为 8：
+### 1. 小规模冒烟测试
 
 ```powershell
 python tools\train.py `
@@ -287,35 +233,12 @@ python tools\train.py `
   train_dataloader.num_workers=0 `
   train_dataloader.persistent_workers=False `
   train_dataloader.dataset.indices=32 `
-  val_dataloader.batch_size=1 `
-  val_dataloader.num_workers=0 `
-  val_dataloader.persistent_workers=False `
   optim_wrapper.accumulative_counts=8 `
   train_cfg.max_epochs=1 `
   work_dir=./work_dirs/hardware_test_b1
 ```
 
-32 张图片的预期训练迭代数：
-
-| 训练 batch | 迭代数 | 梯度累积 | 参数更新次数 |
-|---:|---:|---:|---:|
-| 1 | 32 | 8 | 4 |
-| 2 | 16 | 4 | 4 |
-| 4 | 8 | 2 | 4 |
-
-终端应出现类似：
-
-```text
-Epoch(train) [1][32/32]   # batch 1
-Epoch(train) [1][16/16]   # batch 2
-Epoch(train) [1][8/8]     # batch 4
-Saving checkpoint at 1 epochs
-```
-
-> [!CAUTION]
-> 32 张图片只能判断“能不能跑”，不能判断模型精度。此时 mAP 为 0 或非常低都是正常现象。
-
-成功后逐级测试，而不是直接使用最大值：
+逐级测试并保持有效 batch 为 8：
 
 | 物理 batch | 梯度累积 | 有效 batch |
 |---:|---:|---:|
@@ -323,216 +246,153 @@ Saving checkpoint at 1 epochs
 | 2 | 4 | 8 |
 | 4 | 2 | 8 |
 
-测试 batch 2 时，把命令中的对应值改为：
+出现 `CUDA out of memory` 时退回上一个稳定值。workers 建议从0开始测试，再尝试2；只有更快且稳定时才继续增加。
 
-```text
-train_dataloader.batch_size=2
-optim_wrapper.accumulative_counts=4
-work_dir=./work_dirs/hardware_test_b2
-```
-
-测试 batch 4 时改为：
-
-```text
-train_dataloader.batch_size=4
-optim_wrapper.accumulative_counts=2
-work_dir=./work_dirs/hardware_test_b4
-```
-
-出现 `CUDA out of memory` 时停止提高 batch，使用上一个稳定值。不要通过降低 1024×1024 输入尺寸或开启 AMP 来绕过显存测试；这会改变基线条件，且当前 KLD 匹配计算不支持完整 FP16 训练。
-
-每次 batch 测试记录下列数据：
-
-| batch | accumulation | time/批 | time/张 | memory | 是否 OOM |
-|---:|---:|---:|---:|---:|---|
-| 1 | 8 |  |  |  |  |
-| 2 | 4 |  |  |  |  |
-| 4 | 2 |  |  |  |  |
-
-在不 OOM 的候选项中，优先选择物理 batch 较大且每张耗时较低的配置，但至少保留一定显存余量。
-
-### 8.3 测试验证/test batch
-
-验证不保存梯度，通常能使用与训练相同或更大的 batch。使用已经生成的测试权重运行：
-
-```powershell
-python tools\test.py `
-  projects\rotated_rtdetr\configs\o2_rtdetr_r18vd_1xb1_72e_l315.py `
-  work_dirs\hardware_test_b1\epoch_1.pth `
-  --cfg-options `
-  test_dataloader.batch_size=4 `
-  test_dataloader.num_workers=0 `
-  test_dataloader.persistent_workers=False `
-  --work-dir work_dirs/val_batch_test
-```
-
-如果验证 batch 4 OOM，则依次退回 2、1。验证 batch 只影响吞吐量和显存，不更新模型权重。
-
-使用同一 checkpoint 对比不同验证 batch，并记录：
-
-| 验证 batch | data_time | time | mAP | 是否 OOM |
-|---:|---:|---:|---:|---|
-| 1 |  |  |  |  |
-| 2 |  |  |  |  |
-| 4 |  |  |  |  |
-
-同一权重下 mAP 应保持一致或只有正常浮点波动。
-
-### 8.4 测试 num_workers
-
-`num_workers` 取决于 CPU、系统内存、硬盘和操作系统。Windows 建议从 0 开始，再测试 2；只有 2 明显更快且稳定时才保留。
-
-```text
-num_workers=0  -> persistent_workers=False
-num_workers>0  -> persistent_workers=True
-```
-
-比较日志中的 `data_time` 和 `time`，选择稳定且总 `time` 最小的值。workers 过多可能因进程调度和磁盘竞争而变慢。
-
-为了避免 worker 启动开销干扰结果，worker 测试建议至少使用 128 张训练图片。比较表：
-
-| workers | persistent_workers | data_time | time | 是否稳定 |
-|---:|---|---:|---:|---|
-| 0 | False |  |  |  |
-| 2 | True |  |  |  |
-| 3 | True |  |  |  |
-| 4 | True |  |  |  |
-
-不是 workers 越多越快；选择总 `time` 最低且长时运行不报错的值。
-
-### 8.5 固定该电脑的运行配置
-
-完成测试后，把选定值写回 L315 配置文件，并再次执行第 7 节检查。此后正式基线训练期间不再更改：
-
-```text
-训练 batch size
-梯度累积次数
-验证/test batch size
-num_workers
-persistent_workers
-```
-
-必须始终保证：
-
-```text
-训练物理 batch × 梯度累积 = 有效 batch 8
-```
-
-## 9. 🔥 完整数据集 1 轮压力测试
-
-这一步相当于正式训练前的“模考”。小规模测试可能没有抽到车辆极其密集的图片，只有跑完全部 12,248 张训练图片，才能检查最坏情况下的显存、标注和匹配计算。
-
-完整 1 轮需要验证：
-
-- 所有训练图片和标注都能读取；
-- 密集目标 batch 不会 OOM；
-- workers 长时运行不会退出或卡死；
-- loss 为有限数值，不出现 `nan` / `inf`；
-- 前向、反向、EMA、checkpoint 和验证全链路正常；
-- 显存、温度和迭代时间能长时保持稳定。
-
-执行：
+### 2. 完整一轮压力测试
 
 ```powershell
 python tools\train.py `
   projects\rotated_rtdetr\configs\o2_rtdetr_r18vd_1xb1_72e_l315.py `
   --cfg-options `
   train_cfg.max_epochs=1 `
-  work_dir=./work_dirs/l315_full_1epoch_test
+  work_dir=./work_dirs/l315_full_epoch_test
 ```
 
-成功标志是完成整轮训练、保存 `epoch_1.pth` 并完成验证。迭代次数由最终 batch 决定：
+确认全部12,248张训练图片可读取、无OOM、loss无`nan/inf`、checkpoint正常保存且验证完整结束。
 
-```text
-训练 batch 1：12248 次/epoch
-训练 batch 2： 6124 次/epoch
-训练 batch 4： 3062 次/epoch
+> [!CAUTION]
+> 当前基线保持 FP32。不要直接加入 `--amp`；本项目部分旋转匹配计算在当前依赖组合下不支持完整FP16路径。
 
-验证 batch 1：3065 次
-验证 batch 2：1533 次
-验证 batch 4： 767 次
-```
+## 🚀 正式训练
 
-模考通过标准：
-
-| 检查项 | 通过标准 | 失败处理 |
-|---|---|---|
-| GPU 显存 | 完整 1 轮无 OOM | 降低物理 batch，同时提高梯度累积 |
-| loss | 无 `nan` / `inf`，整体有下降趋势 | 停止训练并检查标注、学习率和数值异常 |
-| 数据读取 | 训练和验证均能跑完 | 定位报错图片或标注文件 |
-| checkpoint | 生成 `epoch_1.pth` 和 `last_checkpoint` | 检查工作目录和磁盘空间 |
-| 验证 | 输出四类 AP 和 mAP | 检查类别顺序、数据路径和评价器 |
-| 长时稳定性 | 无 worker 崩溃、驱动重置或异常降频 | 减少 workers，检查电源和散热 |
-
-> [!NOTE]
-> 模考的 mAP 只用于确认模型已经开始学习，不代表最终精度。如果这 1 轮使用的就是最终固定配置，则 `epoch_1.pth` 可直接作为正式 72 轮训练的第 1 轮，无需重新开始。
-
-当前已验证的第 1 轮结果：
-
-```text
-训练迭代：3062
-显存峰值：约 5.5 GB（MMEngine 统计）
-mAP: 0.3963
-```
-
-## 10. 🚀 继续正式 72 轮基线训练
-
-第 1 轮已经是正式基线的一部分。使用同一工作目录从 `epoch_1.pth` 继续：
+推荐最大训练90轮，每6轮验证一次，并在90轮以内选择验证集mAP最高的检查点。114轮仅用于本次收敛探索，不代表后续实验必须训练114轮。
 
 ```powershell
 python tools\train.py `
   projects\rotated_rtdetr\configs\o2_rtdetr_r18vd_1xb1_72e_l315.py `
-  --work-dir ./work_dirs/l315_full_1epoch_test `
+  --cfg-options `
+  train_cfg.max_epochs=90 `
+  train_cfg.val_interval=6 `
+  work_dir=./work_dirs/l315_o2_rtdetr_r18_baseline
+```
+
+### 中断与恢复
+
+尽量在出现 `Saving checkpoint at N epochs` 后停止。恢复命令：
+
+```powershell
+python tools\train.py `
+  projects\rotated_rtdetr\configs\o2_rtdetr_r18vd_1xb1_72e_l315.py `
+  --work-dir ./work_dirs/l315_o2_rtdetr_r18_baseline `
   --resume
 ```
 
-正确恢复时会看到：
+中途修改模型、数据划分、batch、梯度累积、优化器或学习率后，不能继续沿用原实验作为同一基线。
 
-```text
-resumed epoch: 1
-Epoch(train) [2][.../3062]
+## ✅ 测试集最终评估
+
+训练期间通过验证集选择最佳权重。本次最佳权重为 `epoch_78.pth`：
+
+```powershell
+python tools\test.py `
+  projects\rotated_rtdetr\configs\o2_rtdetr_r18vd_1xb1_72e_l315.py `
+  work_dirs\l315_o2_rtdetr_r18_baseline\epoch_78.pth
 ```
 
-正式训练开始后，不再修改模型、数据、batch size、梯度累积、优化器、学习率、数据增强和输入尺寸。
+3350张测试图片、batch 4 对应 `Epoch(test) [838/838]`。创新阶段仍使用验证集筛选，测试集只用于最终报告。
 
-## 11. ⏯️ 中断与恢复
+## 🖼️ 可视化与预测导出
 
-配置每轮都保存 checkpoint。需要暂停时，尽量等待：
+生成测试集可视化：
 
-```text
-Saving checkpoint at N epochs
+```powershell
+python tools\test.py `
+  projects\rotated_rtdetr\configs\o2_rtdetr_r18vd_1xb1_72e_l315.py `
+  work_dirs\l315_o2_rtdetr_r18_baseline\epoch_78.pth `
+  --show-dir test_visualizations `
+  --wait-time 0
 ```
 
-然后按一次 `Ctrl+C`。恢复时重新执行第 10 节的 `--resume` 命令。
+每张图片左侧为真实旋转框，右侧为预测旋转框与置信度。
 
-如果在某轮中间停止，当前未完成轮次会丢失，但可从上一个完整 checkpoint 继续。
+导出逐图预测结果：
 
-## 12. 📊 训练产物和基线记录
-
-权重、日志和配置快照保存在：
-
-```text
-D:\Object_Detection\O2-RT-DETR-main\work_dirs\l315_full_1epoch_test\
+```powershell
+python tools\test.py `
+  projects\rotated_rtdetr\configs\o2_rtdetr_r18vd_1xb1_72e_l315.py `
+  work_dirs\l315_o2_rtdetr_r18_baseline\epoch_78.pth `
+  --out work_dirs\l315_o2_rtdetr_r18_baseline\test_predictions.pkl
 ```
 
-每 6 轮记录：
+`test_predictions.pkl`保存逐图预测类别、置信度和旋转框坐标。它不是模型权重，主要用于离线分析。
 
-```text
-epoch
-mAP
-Bus AP
-Car AP
-Truck AP
-Van AP
+## 🔍 混淆矩阵
+
+```powershell
+python tools\analysis_tools\confusion_matrix.py `
+  projects\rotated_rtdetr\configs\o2_rtdetr_r18vd_1xb1_72e_l315.py `
+  work_dirs\l315_o2_rtdetr_r18_baseline\test_predictions.pkl `
+  work_dirs\l315_o2_rtdetr_r18_baseline\confusion_matrix `
+  --score-thr 0.3 `
+  --tp-iou-thr 0.5
 ```
 
-已得到的基线节点：
+主要结论：
 
-| Epoch | Bus AP | Car AP | Truck AP | Van AP | mAP |
-|---:|---:|---:|---:|---:|---:|
-| 1 | 0.3499 | 0.8472 | 0.2935 | 0.0946 | 0.3963 |
-| 6 | 0.8722 | 0.9046 | 0.7371 | 0.4461 | 0.7400 |
+1. Van AP为70.03%，显著低于其他类别；
+2. Van→Car为23.0%，Van→Truck为6.5%；
+3. Car有106,534个训练实例，Van只有2,465个，相差约43倍；
+4. 背景误检中80.5%被预测为Car；
+5. 单纯延长训练到114轮不能继续稳定提升性能。
 
-先完成 72 轮并保留完整学习曲线，再根据收敛情况统一确定后续基线、改进模型和消融实验的正式训练轮数。
+## 🧠 后续研究方向
 
+**主创新：类别均衡原型引导查询增强（BCP-QE）。** 在Decoder查询和分类头之间建立类别原型交互，增强Van、Car和Truck之间的细粒度判别，并采用类别均衡更新避免Car主导特征空间。
 
+**补充创新一：混淆感知原型间隔损失（CAPM Loss）。** 根据Van→Car和Van→Truck的混淆关系设置针对性特征间隔。
+
+**补充创新二：背景难负查询抑制（BHQS）。** 筛选高置信度背景查询，重点降低Background→Car误检。
+
+正式编码前需要检索类别原型、DETR查询增强、长尾检测和遥感细粒度车辆检测相关论文，确认具体实现与已有方法不存在高度重复。
+
+## 🤝 双人协作与权重共享
+
+`.gitignore`默认忽略`work_dirs`，因此GitHub不会包含权重、日志、预测文件和可视化图片。`epoch_78.pth`约414MB，也超过GitHub普通文件100MB限制。
+
+队友拉取代码后创建目录：
+
+```powershell
+New-Item -ItemType Directory -Force `
+  work_dirs\l315_o2_rtdetr_r18_baseline
+```
+
+通过网盘、U盘或局域网共享：
+
+```text
+必需：epoch_78.pth
+可选：test_predictions.pkl
+可选：基线汇总Excel和典型可视化图片
+```
+
+将权重放到：
+
+```text
+work_dirs/l315_o2_rtdetr_r18_baseline/epoch_78.pth
+```
+
+基线权重用于复现与对比。创新模型应使用与基线相同的初始化重新训练，不应默认从`epoch_78.pth`继续微调。
+
+## 📦 重要产物
+
+| 文件 | 作用 | 是否必须共享 |
+|---|---|---|
+| `epoch_78.pth` | 最佳基线模型权重 | 是 |
+| `test_predictions.pkl` | 测试集逐图结构化预测 | 按需 |
+| `test_visualizations/` | 真实框与预测框对照图 | 按需 |
+| `confusion_matrix/` | 混淆矩阵和误差分析 | 按需 |
+| `baseline_validation_results_1_114.csv` | 验证集逐轮结果 | 建议 |
+| 基线汇总Excel | 配置、训练、验证、测试、混淆与研究方向汇总 | 建议 |
+
+## 📚 引用与官方资料
+
+论文、官方模型说明和引用格式请查看 [README_OFFICIAL.md](README_OFFICIAL.md)。

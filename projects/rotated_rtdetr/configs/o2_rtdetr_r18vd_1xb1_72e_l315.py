@@ -50,9 +50,22 @@ val_dataloader.update(
         test_mode=True,
         pipeline=val_pipeline))
 
-# Use the validation split for the first end-to-end evaluation. The supplied
+# Evaluate the final selected checkpoint on the labeled L315 test split.
 # test split can be wired in after the training and validation path is proven.
 test_dataloader = deepcopy(val_dataloader)
+
+test_dataloader.update(
+    batch_size=4,
+    num_workers=2,
+    persistent_workers=True,
+    dataset=dict(
+        type=dataset_type,
+        data_root=dataset_root,
+        ann_file='test/labelTxt/',
+        data_prefix=dict(img_path='test/images/'),
+        metainfo=metainfo,
+        test_mode=True,
+        pipeline=val_pipeline))
 test_evaluator = deepcopy(val_evaluator)
 
 # Paper effective batch size: 2 GPUs x 4 images = 8.
@@ -66,4 +79,4 @@ auto_scale_lr.update(enable=False, base_batch_size=8)
 # run, but using ``spawn`` also keeps later worker increases portable.
 env_cfg['mp_cfg']['mp_start_method'] = 'spawn'
 
-work_dir = './work_dirs/o2_rtdetr_r18vd_1xb1_72e_l315'
+work_dir = './work_dirs/l315_o2_rtdetr_r18_baseline'
