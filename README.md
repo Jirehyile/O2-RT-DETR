@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/Test_mAP-83.07%25-success" alt="Test mAP 83.07%">
 </p>
 
-本仓库记录 O²-RTDETR-R18 在四类 L315_vehicle 数据集上的完整基线流程，包括环境搭建、硬件适配、正式训练、断点恢复、验证集选权重、测试集评估、可视化、预测结果导出、混淆矩阵和后续创新方向。
+本仓库记录 O²-RTDETR-R18 在四类 L315_vehicle 数据集上的完整基线流程，包括环境搭建、硬件适配、正式训练、断点恢复、验证集选权重、测试集评估、可视化、预测结果导出、混淆矩阵和后续创新方向
 
 > [!NOTE]
 > 原论文与官方项目介绍保存在 [README_OFFICIAL.md](README_OFFICIAL.md)。本 README 只描述当前仓库的 L315 基线复现和实验流程。
