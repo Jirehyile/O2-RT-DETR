@@ -168,8 +168,11 @@ def kld_loss(pred, target, fun='log1p', tau=1.0, alpha=1.0, sqrt=True):
     Returns:
         loss (torch.Tensor)
     """
-    xy_p, Sigma_p = pred
-    xy_t, Sigma_t = target
+    # CUDA does not implement the 2x2 determinant below for FP16. Casting
+    # here remains differentiable, so gradients still flow back to the AMP
+    # model while the numerically sensitive KLD calculation runs in FP32.
+    xy_p, Sigma_p = (item.float() for item in pred)
+    xy_t, Sigma_t = (item.float() for item in target)
 
     _shape = xy_p.shape
 
@@ -396,16 +399,21 @@ class GDLoss(nn.Module):
         _kwargs = deepcopy(self.kwargs)
         _kwargs.update(kwargs)
 
-        pred = self.preprocess(pred)
-        target = self.preprocess(target)
+        # Building covariance matrices and evaluating Gaussian distances in
+        # FP16 can overflow or produce singular determinants. Keep the whole
+        # Gaussian-loss path in FP32; the cast remains differentiable, while
+        # the rest of the detector can still benefit from AMP.
+        with torch.cuda.amp.autocast(enabled=False):
+            pred = self.preprocess(pred.float())
+            target = self.preprocess(target.float())
 
-        return self.loss(
-            pred,
-            target,
-            fun=self.fun,
-            tau=self.tau,
-            alpha=self.alpha,
-            weight=weight,
-            avg_factor=avg_factor,
-            reduction=reduction,
-            **_kwargs) * self.loss_weight
+            return self.loss(
+                pred,
+                target,
+                fun=self.fun,
+                tau=self.tau,
+                alpha=self.alpha,
+                weight=weight,
+                avg_factor=avg_factor,
+                reduction=reduction,
+                **_kwargs) * self.loss_weight

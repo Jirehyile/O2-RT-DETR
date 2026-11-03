@@ -66,8 +66,11 @@ def kld_loss(pred, target, fun='log1p', tau=1.0, alpha=1., sqrt=True):
     Returns:
         kullback leibler divergence (torch.Tensor) shape (n, m)
     """
-    xy_1, Sigma_1 = pred
-    xy_2, Sigma_2 = target
+    # CUDA does not implement the determinant operation below for FP16.
+    # Hungarian matching is non-differentiable, so keep this small numerical
+    # block in FP32 while allowing the rest of the model to run with AMP.
+    xy_1, Sigma_1 = (item.float() for item in pred)
+    xy_2, Sigma_2 = (item.float() for item in target)
 
     N, _ = xy_1.shape
     M, _ = xy_2.shape
@@ -300,18 +303,23 @@ class GDCost(BaseMatchCost):
         if isinstance(gt_bboxes, BaseBoxes):
             gt_bboxes = gt_bboxes.tensor
 
-        pred_bboxes = self.preprocess(pred_bboxes)
-        gt_bboxes = self.preprocess(gt_bboxes)
         _kwargs = deepcopy(self.kwargs)
         _kwargs.update(kwargs)
 
-        return self.cost(
-            pred_bboxes,
-            gt_bboxes,
-            fun=self.fun,
-            tau=self.tau,
-            alpha=self.alpha,
-            **_kwargs) * self.weight
+        # Covariance construction can overflow in FP16 before kld_loss gets
+        # a chance to promote its inputs, so keep the complete matching-cost
+        # path in FP32 under AMP.
+        with torch.cuda.amp.autocast(enabled=False):
+            pred_bboxes = self.preprocess(pred_bboxes.float())
+            gt_bboxes = self.preprocess(gt_bboxes.float())
+
+            return self.cost(
+                pred_bboxes,
+                gt_bboxes,
+                fun=self.fun,
+                tau=self.tau,
+                alpha=self.alpha,
+                **_kwargs) * self.weight
 
 
 class HausdorffCost(RBoxL1Cost):
