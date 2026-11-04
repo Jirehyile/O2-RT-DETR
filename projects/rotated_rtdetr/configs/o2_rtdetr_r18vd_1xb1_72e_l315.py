@@ -13,7 +13,7 @@ with read_base():
     from .o2_rtdetr_r18vd_2xb4_72e_dota import *
 
 
-dataset_root = 'D:/Object_Detection/data/L315_vehicle/'
+dataset_root = 'D:/数据集/data/L315_vehicle/'
 metainfo = dict(
     classes=('Bus', 'Car', 'Truck', 'Van'),
     palette=[(220, 20, 60), (0, 128, 255), (255, 165, 0), (0, 180, 90)])
