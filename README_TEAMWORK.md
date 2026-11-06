@@ -17,6 +17,10 @@
   <a href="README_TEAMWORK.md"><img src="https://img.shields.io/badge/团队分工与协议-当前页面-7C3AED?style=for-the-badge" alt="团队分工与实验协议"></a>
 </p>
 
+<p align="center">
+  <img src="docs/assets/team-parallel-flow.svg" width="920" alt="成员 A 与成员 B 并行研究并联合验证的协作动画">
+</p>
+
 ---
 
 本文档用于统一两名成员在 O²-RTDETR × DroneVehicle 项目中的研究边界、创新归属、实验流程和交付标准。技术背景、基线结果与诊断数据以项目主 `README.md` 为准；本文档只负责团队协作和实验管理。
