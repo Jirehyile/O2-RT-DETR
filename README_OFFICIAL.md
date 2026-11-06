@@ -16,10 +16,6 @@
   <a href="README_TEAMWORK.md"><img src="https://img.shields.io/badge/团队分工与协议-查看文档-7C3AED?style=for-the-badge" alt="团队分工与实验协议"></a>
 </p>
 
-<p align="center">
-  <img src="docs/assets/paper-evolution-flow.svg" width="920" alt="从 RT-DETR 到 O²-RTDETR 再到本项目研究的技术演进动画">
-</p>
-
 ---
 
 > [!IMPORTANT]

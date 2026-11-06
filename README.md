@@ -19,10 +19,6 @@
   <a href="README_TEAMWORK.md"><img src="https://img.shields.io/badge/团队分工与协议-查看文档-7C3AED?style=for-the-badge" alt="团队分工与实验协议"></a>
 </p>
 
-<p align="center">
-  <img src="docs/assets/project-research-flow.svg" width="920" alt="基线、诊断、创新与验证研究流程动画">
-</p>
-
 ---
 
 本仓库以 **O²-RTDETR-R18** 为基线，在 **DroneVehicle RGB** 单模态数据集上研究密集、长尾、易混车辆的旋转目标检测。当前已经完成基线正式训练、验证集选权重、测试集评估、Query Selection专项诊断和角度专项诊断，研究工作正式进入创新机制设计与实验阶段。
