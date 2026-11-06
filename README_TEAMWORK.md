@@ -1,11 +1,23 @@
-# O²-RTDETR 两人研究分工与共同实验协议
+<h1 align="center">O²-RTDETR 两人研究分工与共同实验协议</h1>
+
+<p align="center"><strong>创新归属、阶段任务、实验纪律与协作边界</strong></p>
 
 <p align="center">
-  <strong>项目文档：</strong>
-  <a href="README.md">研究主页</a> ·
-  <a href="README_OFFICIAL.md">原论文与官方工程解读</a> ·
-  <a href="README_TEAMWORK.md">团队分工与实验协议</a>
+  <img src="https://img.shields.io/badge/成员_A-创新_A_%2B_主创新_B-2563EB?style=flat-square" alt="成员A负责创新A和主创新B">
+  <img src="https://img.shields.io/badge/成员_B-创新_C_%2B_统一验证-7C3AED?style=flat-square" alt="成员B负责创新C和统一验证">
+  <img src="https://img.shields.io/badge/正式训练-36_Epochs-EA580C?style=flat-square" alt="正式训练36轮">
+  <img src="https://img.shields.io/badge/Query-300-0F766E?style=flat-square" alt="Query数量300">
 </p>
+
+<p align="center"><strong>📚 项目文档导航</strong></p>
+
+<p align="center">
+  <a href="README.md"><img src="https://img.shields.io/badge/研究主页-查看文档-2563EB?style=for-the-badge" alt="研究主页"></a>
+  <a href="README_OFFICIAL.md"><img src="https://img.shields.io/badge/论文与工程解读-查看文档-475569?style=for-the-badge" alt="原论文与官方工程解读"></a>
+  <a href="README_TEAMWORK.md"><img src="https://img.shields.io/badge/团队分工与协议-当前页面-7C3AED?style=for-the-badge" alt="团队分工与实验协议"></a>
+</p>
+
+---
 
 本文档用于统一两名成员在 O²-RTDETR × DroneVehicle 项目中的研究边界、创新归属、实验流程和交付标准。技术背景、基线结果与诊断数据以项目主 `README.md` 为准；本文档只负责团队协作和实验管理。
 

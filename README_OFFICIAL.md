@@ -5,11 +5,18 @@
 <p align="center">
   <a href="https://ieeexplore.ieee.org/document/11424629">IEEE TGRS</a> ·
   <a href="https://arxiv.org/abs/2603.15497">arXiv</a> ·
-  <a href="https://github.com/wokaikaixinxin/ai4rs/blob/main/projects/rotated_rtdetr/README.md">官方代码说明</a> ·
-  <a href="README.md">研究主页</a> ·
-  <a href="README_OFFICIAL.md">原论文与官方工程解读</a> ·
-  <a href="README_TEAMWORK.md">团队分工与实验协议</a>
+  <a href="https://github.com/wokaikaixinxin/ai4rs/blob/main/projects/rotated_rtdetr/README.md">官方代码说明</a>
 </p>
+
+<p align="center"><strong>📚 项目文档导航</strong></p>
+
+<p align="center">
+  <a href="README.md"><img src="https://img.shields.io/badge/研究主页-查看文档-2563EB?style=for-the-badge" alt="研究主页"></a>
+  <a href="README_OFFICIAL.md"><img src="https://img.shields.io/badge/论文与工程解读-当前页面-0F766E?style=for-the-badge" alt="原论文与官方工程解读"></a>
+  <a href="README_TEAMWORK.md"><img src="https://img.shields.io/badge/团队分工与协议-查看文档-7C3AED?style=for-the-badge" alt="团队分工与实验协议"></a>
+</p>
+
+---
 
 > [!IMPORTANT]
 > 本文档不是论文摘要的简单翻译，而是结合论文正文、方法图、消融实验和当前代码，对技术路线进行通俗化拆解。文中严格区分 **O² 方法家族**、**O²-RTDETR 分支**和**本项目后续创新**。原论文版权及最终解释归原作者所有。
