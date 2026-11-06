@@ -6,7 +6,9 @@
   <a href="https://ieeexplore.ieee.org/document/11424629">IEEE TGRS</a> ·
   <a href="https://arxiv.org/abs/2603.15497">arXiv</a> ·
   <a href="https://github.com/wokaikaixinxin/ai4rs/blob/main/projects/rotated_rtdetr/README.md">官方代码说明</a> ·
-  <a href="README.md">本项目基线、诊断与创新研究</a>
+  <a href="README.md">研究主页</a> ·
+  <a href="README_OFFICIAL.md">原论文与官方工程解读</a> ·
+  <a href="README_TEAMWORK.md">团队分工与实验协议</a>
 </p>
 
 > [!IMPORTANT]

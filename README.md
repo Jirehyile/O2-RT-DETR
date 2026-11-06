@@ -11,6 +11,13 @@
   <img src="https://img.shields.io/badge/Stage-Innovation_Research-blueviolet" alt="Innovation research">
 </p>
 
+<p align="center">
+  <strong>项目文档：</strong>
+  <a href="README.md">研究主页</a> ·
+  <a href="README_OFFICIAL.md">原论文与官方工程解读</a> ·
+  <a href="README_TEAMWORK.md">团队分工与实验协议</a>
+</p>
+
 本仓库以 **O²-RTDETR-R18** 为基线，在 **DroneVehicle RGB** 单模态数据集上研究密集、长尾、易混车辆的旋转目标检测。当前已经完成基线正式训练、验证集选权重、测试集评估、Query Selection专项诊断和角度专项诊断，研究工作正式进入创新机制设计与实验阶段。
 
 本README直接记录：基线配置与结果、两项专项诊断、基线暴露的真实问题、已排除的方向、当前研究方向、一个主创新与两个辅助创新，以及后续实验与稳定性标准。
